@@ -69,21 +69,41 @@ string menu() {
             "Digite aqui: ";
 }
 
+struct SistemaEstoque{
 
-void ver_estoque(){
-    ifstream lendo_estoque("Roupas_em_Estoque.txt");
-    string dados;
-    cout << "======================= ITENS EM ESTOQUE ========================" << endl 
-        << "==== Roupa ==== Tamanho ==== Descrição ==== Marca ==== Preco ====" << endl << endl;
-        while (getline(lendo_estoque, dados)) {
-            cout << dados << endl;
-            }
-    lendo_estoque.close();   
+    void ver_estoque(){
+        ifstream lendo_estoque("Roupas_em_Estoque.txt");
+        string dados;
+        cout << "======================== ITENS EM ESTOQUE =========================" << endl 
+            << "==== Roupa ==== Tamanho ==== Descrição ==== Marca ==== Preco ====" << endl << endl;
+            while (getline(lendo_estoque, dados)) {
+                cout << dados << endl;
+                }
+        lendo_estoque.close();   
+        }
+
+    void ver_quantidade(){
+        ifstream lendo_estoque("Roupas_em_Estoque.txt");
+        if(!lendo_estoque){
+            cout << setw(50) << string(50, '=') << endl;
+            cout << setw(40) << "ARQUIVO NÃO ENCONTRADO!" << endl;
+            cout << setw(50) << string(50, '=');
+        }
+
+        string linhas;
+        if (!getline(lendo_estoque, linhas)){
+            cout << setw(50) << string(50, '=') << endl;
+            cout << setw(40) << "ESTOQUE VAZIO! ADICIONE UMA ROUPA!" << endl;
+            cout << setw(50) << string(50, '=');
+            return;
+            }     
     }
+};
 
    
 int main(){
     int Sim_ou_Nao = 1;
+    SistemaEstoque funcao;
     
     while (Sim_ou_Nao == 1) {
         int opcao;
@@ -95,28 +115,31 @@ int main(){
         case 1:{
             Info_roupa roupa;
             roupa.adiciona_roupa();
-            cout << endl << setw(50) << "========================================" << endl;
+            cout << endl << setw(50) << string(40, '=') << endl;
             cout << setw(45) << "Roupa Adicionada com Sucesso!!!" << endl;
-            cout << setw(50) <<  "========================================" << endl;
+            cout << setw(50) << string(40, '=') << endl;
             break;
         }
         
         case 2:
-            ver_estoque();
+            funcao.ver_estoque();
+            break;
+        
+        case 3:
+            funcao.ver_quantidade();
             break;
         
         default:
-            cout << endl << "Opção Inválida!!!" << endl;
-        
+            cout << endl << "Opção Inválida!!!" << endl;   
       }
 
-      cout << endl << "Deseja realizar outra operação?" << endl 
-      << "Digite 1 para 'SIM' ou 2 para 'NÃO': ";
+      cout << endl << setw(47) << "Deseja realizar outra operação?" << endl; 
+      cout << setw(50) << "Digite 1 para 'SIM' ou 2 para 'NÃO': ";
       cin >> Sim_ou_Nao;
       cin.ignore();
     }
 
-    cout << endl << "==== FIM DO PROGRAMA. OBRIGADO(A) ====" << endl;
+    cout << endl << "================= FIM DO PROGRAMA. OBRIGADO(A) =================" << endl;
 
     return 0;
 }
