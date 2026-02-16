@@ -77,7 +77,7 @@ struct Info_roupa{
         }
 };
 
-struct DataFunções{
+struct DataFuncoes{
     bool formato_data(string data){
         if (data.length() != 10){
             return false;
@@ -366,3 +366,4 @@ int main(){
 
     return 0;
 }
+
