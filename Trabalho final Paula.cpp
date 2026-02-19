@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <iomanip>
+#include <sstream>
 using namespace std;
 
 string menu() {
@@ -9,7 +10,7 @@ string menu() {
             "1. Adicionar roupa ao estoque\n"
             "2. Ver itens do estoque\n" 
             "3. Ver quantidade de roupas no estoque\n"
-            "4. Pesquisar por... \n"
+            "4. Pesquisar por Data \n"
             "5. Excluir itens do estoque \n"
             "Digite aqui: ";
 }
@@ -73,7 +74,8 @@ struct Info_roupa{
 
         ofstream adc_roupa("Roupas_em_Estoque.txt", ios::app);  
         adc_roupa << roupa.Tipo << " | " << roupa.Tamanho << " | " << roupa.descricao
-        << " | " << roupa.marca << " | " << "R$" << fixed << setprecision(2) << roupa.valor << endl;
+        << " | " << roupa.marca << " | " << "R$" << fixed << setprecision(2) << roupa.valor << endl
+        << " | " << roupa.data << endl;
         adc_roupa.close();
         }
 };
@@ -133,7 +135,7 @@ struct DataFuncoes{
         cout << mensagem;
         getline(cin, data);
 
-        while(!data_completa_valida(data)){
+        while(!data_completa_valida(data) or (data.empty())){
             cout << "A data inserida é inválida! Por favor use o formato DD/MM/AAAA, com dias e meses válidos: " << endl;
             getline(cin, data);
         }
@@ -329,7 +331,7 @@ struct Sistema_Estoque{
             bool selecao = true;
             while (selecao){
                 cout << "========== Digite o número do item para marcar/desmarcar exclusão ==========" << endl;
-                cout << setw(65) << "---- Digite 0 para finalizar a operação ----" << endl;
+                cout <<"==================== Digite 0 para finalizar a operação ====================" << endl << endl;
 
                 for (int i = 0; i < tam_vetor; i++){
                     string status_do_item;
@@ -345,7 +347,6 @@ struct Sistema_Estoque{
                     cout << i + 1 << ". " << status_do_item << roupas[i] << endl << endl;
                 }
                 
-                cout << endl;
                 cout << string(65, '=') << endl;
                 cout << "Informe o número do item que deseja excluir: ";
                 cin >> escolha;
@@ -391,6 +392,7 @@ struct Sistema_Estoque{
             char confirmar;
             cout << endl << "Deseja excluir " << lixeira << " itens? (S/N): ";
             cin >> confirmar;
+            cin.ignore(10000, '\n');
             
             if ((confirmar == 'S') or (confirmar == 's')){
                 ofstream arquivo_atualizado("Roupas_em_estoque.txt");
@@ -419,18 +421,33 @@ int main(){
     Sistema_Estoque sistema;
     
     while (Sim_ou_Nao == 1) {
-        int principal;
+        int opcao;
+        string entrada;
         cout << menu();
-        cin >> principal;
-        cout << endl;
+        getline(cin, entrada);
+        if (entrada.empty()){
+            cout << string(65, '=') << endl;
+            cout << setw(50) << "Insira algo válido!" << endl;
+            cout << string(65, '=') << endl;
+            cout << endl;
+            continue;
+        }
 
-        switch (principal) {
+        stringstream ss(entrada);
+        if(!(ss >> opcao)){
+            cout << string(65, '=') << endl;
+            cout << setw(45) << "Insira um NÚMERO!: " << endl;
+            cout << string(65, '=') << endl;
+            continue;
+        }
+
+        switch (opcao) {
             case 1:{
                 Info_roupa roupa;
                 roupa.adiciona_roupa();
-                cout << endl << setw(50) << string(40, '=') << endl;
+                cout << endl << string(65, '=') << endl;
                 cout << setw(45) << "Roupa Adicionada com Sucesso!!!" << endl;
-                cout << setw(50) << string(40, '=') << endl;
+                cout << string(65, '=') << endl;
                 break;
             }
         
@@ -443,30 +460,8 @@ int main(){
                 break;
             
             case 4: {
-                int secundario;
-                cout << "4. Pesquisar por..." << endl;
-                cout << "1. Data" << endl;
-                cout << "2. Identificador do Item" << endl;
-                cout << "Digite aqui: ";
-                cin >> secundario;
-
-                while((cin.fail()) or (secundario < 1) or (secundario > 2)){
-                    cin.clear();  
-                    cin.ignore(10000, '\n');  
-                    cout << "Infome uma ação válida: ";
-                    cin >> secundario;
-                }
-
-                switch(secundario){
-                    case 1:
-                        cin.ignore();
-                        sistema.ver_intervalo_data();
-                        break;  
-                        
-                default:
-                    cout << "Digite uma opção válida!" << endl;
-                }
-                
+                cin.ignore();
+                sistema.ver_intervalo_data();
                 break;
             }
 
@@ -481,15 +476,41 @@ int main(){
         
         cout << endl << setw(47) << "Deseja realizar outra operação?" << endl; 
         cout << setw(50) << "Digite 1 para 'SIM' ou 2 para 'NÃO': ";
-        cin >> Sim_ou_Nao;
-        cout << endl;
-        while((cin.fail()) or (secundario < 1) or (secundario > 2)){
-            cout << string(65, '=') << endl;
-            cout << setw(43) << "Erro! Opção Inválida" << endl;
-            cout << string(65, '=') << endl;
+        
+        string sim_ou_nao_entrada;
+        bool se_valido = false;
+
+        while(!se_valido){
+            getline(cin, sim_ou_nao_entrada);
+
+            if (sim_ou_nao_entrada.empty()){
+                cout << string(65, '=') << endl;
+                cout << setw(43) << "Valor inválido!" << endl;
+                cout << string(65, '=') << endl;
+
+                continue;
+            }
+
+           stringstream ss(sim_ou_nao_entrada);
+            if (!(ss >> Sim_ou_Nao)){
+                cout << string(65, '=') << endl;
+                cout << setw(43) << "Digite apenas 1 ou 2! " << endl;
+                cout << string(65, '=') << endl;
+                cout << "Digite: ";
+                continue;
+            }
+
+            if ((Sim_ou_Nao < 1) or (Sim_ou_Nao > 2)){
+                cout << string(65, '=') << endl;
+                cout << setw(43) << "Digite apenas 1 ou 2!" << endl;
+                cout << string(65, '=') << endl;
+                cout << "Digite: ";
+                continue;
+            }
+
+            se_valido = true;
         }
     }
-
 
     cout << endl << "================= FIM DO PROGRAMA. OBRIGADO(A) ==================" << endl;
 
