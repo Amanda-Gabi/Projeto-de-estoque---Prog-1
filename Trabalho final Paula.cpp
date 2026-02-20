@@ -4,80 +4,16 @@
 #include <sstream>
 using namespace std;
 
-string menu() {
-
-    return "Digite o número da operação desejada abaixo: \n"
-            "1. Adicionar roupa ao estoque\n"
-            "2. Ver itens do estoque\n" 
-            "3. Ver quantidade de roupas no estoque\n"
-            "4. Pesquisar por Data \n"
-            "5. Excluir itens do estoque \n"
-            "Digite aqui: ";
-}
-
 struct Info_roupa{
 
+    int id;
     string Tipo;
     string Tamanho;
     string descricao;
     string marca;
     float valor;
     string data;
-
-    void adiciona_roupa() {
-
-        Info_roupa roupa;
-
-        cout << "Diga que Tipo de roupa é (ex: Camisa, calca, sapato, etc...): ";
-        getline(cin, roupa.Tipo);
-        while (roupa.Tipo.empty()) {
-            cout << "Campo Obrigatório! Infome o Tipo de roupa: ";
-            getline(cin, roupa.Tipo);
-        }
-
-        cout << "Agora o Tamanho da roupa (ex: M, G, P, etc..): ";
-        getline(cin, roupa.Tamanho);
-        while (roupa.Tamanho.empty()) {
-            cout << "Campo Obrigatório! Infome o Tamanho da roupa: ";
-            getline(cin, roupa.Tamanho);
-        }
-
-        cout << "Agora dê uma breve Descrição sobre a roupa: ";
-        getline(cin, roupa.descricao);
-        while (roupa.descricao.empty()) {
-            cout << "Campo Obrigatório! Infome a Descrição da roupa (se não souber ponha 'desconhecida'): ";
-            getline(cin, roupa.descricao);
-        }
-        cout << "Agora diga a Marca da roupa: ";
-        getline(cin, roupa.marca);
-        while (roupa.marca.empty()) {
-            cout << "Campo Obrigatório! Infome a Marca da roupa: ";
-            getline(cin, roupa.marca);
-        }
-
-        cout << "Agora o valor da roupa: ";
-        cin >> roupa.valor;
-        while((roupa.valor <= 0) or (cin.fail())) {
-            cin.clear();  
-            cin.ignore(10000, '\n');  
-            cout << "Valor inválido! Informe um Valor válido: ";
-            cin >> roupa.valor;
-        }
-        cin.ignore();
-
-        cout << "Em que Data você está adicionando a roupa? (informe DD/MM/AAAA): ";
-        getline(cin, roupa.data);
-        while (roupa.data.empty()) {
-            cout << "Campo Obrigatório! Infome a Data: ";
-            getline(cin, roupa.data);
-        }
-
-        ofstream adc_roupa("Roupas_em_Estoque.txt", ios::app);  
-        adc_roupa << roupa.Tipo << " | " << roupa.Tamanho << " | " << roupa.descricao
-        << " | " << roupa.marca << " | " << "R$" << fixed << setprecision(2) << roupa.valor << endl
-        << " | " << roupa.data << endl;
-        adc_roupa.close();
-        }
+    bool excluido;
 };
 
 struct DataFuncoes{
@@ -143,26 +79,6 @@ struct DataFuncoes{
         return data;
     }
 
-    string data_na_linha(string l_atual) {
-        int achar_traco = -1;
-        int t = 0;
-
-        for(t = 0; t < l_atual.length(); t++){
-            if(l_atual[t] == '|'){
-                achar_traco = t;
-            }
-        }
-        
-        if(achar_traco != -1){
-            string Data_do_Item = "";       
-            for(int d = achar_traco + 2; d < l_atual.length(); d++){
-                Data_do_Item += l_atual[d];
-            }
-            return Data_do_Item;
-        }
-        return "";
-    }
-
     string convertendo_para_ISO(string data){            
         if (data.length() != 10){
             return "";
@@ -174,177 +90,309 @@ struct DataFuncoes{
 
     bool intervalos(string data_na_linha, string inicio_periodo, string fim_periodo){
 
-        string ItemLinha = convertendo_para_ISO(data_na_linha);
-        string InicioP = convertendo_para_ISO(inicio_periodo);
-        string FinalP = convertendo_para_ISO(fim_periodo);
+        string ItemISO = convertendo_para_ISO(data_na_linha);
+        string InicioISO = convertendo_para_ISO(inicio_periodo);
+        string FinalISO = convertendo_para_ISO(fim_periodo);
 
-        return ((ItemLinha >= InicioP) and (ItemLinha <= FinalP));
+        return ((ItemISO >= InicioISO) and (ItemISO <= FinalISO));
     }    
 };
 
 struct Sistema_Estoque{
-    void ver_estoque(){
-        ifstream lendo_estoque("Roupas_em_Estoque.txt");
-        string dados;
-        cout << "======================== ITENS EM ESTOQUE ========================" << endl 
-            << "--- Roupa ---- Tamanho ---- Descrição ---- Marca ---- Preço ---" << endl << endl;
-            while (getline(lendo_estoque, dados)) {
-                cout << dados << endl << endl;
-                }
-        cout << string(65, '=') << endl;
-        lendo_estoque.close();   
+    Info_roupa *roupas;
+    int capacidade;
+    int total;
+
+    void inicializar_estoque(){
+        capacidade = 40;
+        total = 0;
+        roupas = new Info_roupa[capacidade];
+    }
+
+    void aumentar_estoque(){
+        int capacidade_nova = capacidade + 10;
+        Info_roupa *vetor_novo = new Info_roupa[capacidade_nova];
+
+        for (int i = 0; i < total; i++) {
+            vetor_novo[i] = roupas[i];
         }
 
-    void ver_quantidade(){
-        ifstream lendo_estoque("Roupas_em_Estoque.txt");
-            if(!lendo_estoque){
-                cout << setw(35) << string(50, '=') << endl;
-                cout << setw(35) << "ARQUIVO NÃO ENCONTRADO!" << endl;
-                cout << setw(35) << string(50, '=') << endl;
-            }
+        delete[] roupas;
+        roupas = vetor_novo;
+        capacidade = capacidade_nova;
+    }
 
-            string linhas;
-            if (!getline(lendo_estoque, linhas)){
+    void carregar_itens_do_arquivo(){
+        ifstream lendo_arquivo("Roupas_em_Estoque.txt");
+          if(!lendo_arquivo){
                 cout << string(65, '=') << endl;
-                cout << setw(50) << "ESTOQUE VAZIO! ADICIONE UMA ROUPA!" << endl;
+                cout << setw(35) << "ARQUIVO NÃO ENCONTRADO!" << endl;
                 cout << string(65, '=') << endl;
                 return;
             }
 
-            int conta_linha = 1;
+        string linha;
+        while(getline(lendo_arquivo, linha)){
+            if(!linha.empty()){
+                if(total >= capacidade){
+                    aumentar_estoque();
+                }
 
-            while(getline(lendo_estoque, linhas)) {
-                conta_linha++;
+                stringstream ss(linha);
+
+                getline(ss, roupas[total].Tipo, '|');
+                getline(ss, roupas[total].Tamanho, '|');
+                getline(ss, roupas[total].descricao, '|');
+                getline(ss, roupas[total].marca, '|');
+
+                string valor_str;
+                getline(ss, valor_str, '|');
+                
+                int posicao_R = -1;
+                int cont = 0;
+
+                while((cont < valor_str.length()) and (posicao_R == -1)){
+                    if (valor_str[cont] == 'R'){
+                        posicao_R = cont;
+                    }
+                    cont++;
+                }
+
+                if (posicao_R != -1){
+                    string numero_str = valor_str.substr(posicao_R + 2);
+                    roupas[total].valor = stof(numero_str);
+                }
+
+                getline(ss, roupas[total].data, '|');
+
+                roupas[total].id = total + 1;
+                roupas[total].excluido = false;
+                total++;
+ 
+            }      
+            
+        }
+
+        lendo_arquivo.close();
+        cout << "Carregados " << total << "itens para o vetor." << endl;
+    }
+
+    void salvar_no_arquivo(){
+        ofstream salvando_roupa("Roupas_em_Estoque.txt");
+        
+        int salvos = 0;
+        for (int i = 0; i < total; i++){
+            if(!roupas[i].excluido){
+                salvando_roupa << roupas[i].Tipo << " | " << roupas[i].Tamanho << " | "
+                << roupas[i].descricao << " | " << roupas[i].marca << " | " 
+                << "R$" << fixed << setprecision(2) << roupas[i].valor << " | " << roupas[i].data << endl;
+                salvos++;
             }
+        }
 
-        lendo_estoque.close();
+        salvando_roupa.close();
+        cout << "Foram salvas " << salvos << " roupas no estoque!" << endl;
+    }
+
+    void adicionando_roupa_nova(){
+        if(total >= capacidade){
+            aumentar_estoque();
+        }
+         
+        cout << "Diga que Tipo de roupa é (ex: Camisa, calca, sapato, etc...): ";
+        getline(cin, roupas[total].Tipo);
+        while (roupas[total].Tipo.empty()) {
+            cout << "Campo Obrigatório! Infome o Tipo de roupa: ";
+            getline(cin, roupas[total].Tipo);
+        }
+
+        cout << "Agora o Tamanho da roupa (ex: M, G, P, etc..): ";
+        getline(cin, roupas[total].Tamanho);
+        while (roupas[total].Tamanho.empty()) {
+            cout << "Campo Obrigatório! Infome o Tamanho da roupa: ";
+            getline(cin, roupas[total].Tamanho);
+        }
+
+        cout << "Agora dê uma breve Descrição sobre a roupa: ";
+        getline(cin, roupas[total].descricao);
+        while (roupas[total].descricao.empty()) {
+            cout << "Campo Obrigatório! Infome a Descrição da roupa (se não souber ponha 'desconhecida'): ";
+            getline(cin, roupas[total].descricao);
+        }
+        cout << "Agora diga a Marca da roupa: ";
+        getline(cin, roupas[total].marca);
+        while (roupas[total].marca.empty()) {
+            cout << "Campo Obrigatório! Infome a Marca da roupa: ";
+            getline(cin, roupas[total].marca);
+        }
+        cout << "Agora o valor da roupa: R$";
+        cin >> roupas[total].valor;
+        while((roupas[total].valor <= 0) or (cin.fail())) {
+            cin.clear();  
+            cin.ignore(10000, '\n');  
+            cout << "Valor inválido! Informe um Valor válido: ";
+            cin >> roupas[total].valor;
+        }
+        cin.ignore();
+
+       DataFuncoes Fun_data;
+       roupas[total].data = Fun_data.ler_data_valida("Informe a Data (DD/MM/AAAA): ");
+
+       roupas[total].id = total + 1;
+       roupas[total].excluido = false;
+
+       total++;
+
+       cout << endl << string(65, '=') << endl;
+       cout << setw(45) << "Roupa adicionada com Sucesso ao estoque!!" << endl;
+       cout << string(65, '=') << endl;
+    }
+
+    void ver_estoque(){
+        if (total == 0){
+            cout << string(65, '=') << endl;
+            cout << setw(35) << "ESTOQUE VAZIO ADICIONE UMA ROUPA!!" << endl;
+            cout << string(65, '=') << endl;
+            return;
+        }
+
+        cout << "======================== ITENS EM ESTOQUE ========================" << endl 
+        << "--- Roupa ---- Tamanho ---- Descrição ---- Marca ---- Preço ---" << endl << endl;
+        for (int i = 0; i <  total; i++){
+            if(!roupas[i].excluido){
+                cout << roupas[i].id << roupas[i].Tipo << " | " << roupas[i].Tamanho << " | " 
+                << roupas[i].descricao << " | " << roupas[i].marca << " | " << "R$" << fixed << setprecision(2) 
+                << roupas[i].valor << " | " << "R$" << roupas[i].data << endl << endl;
+            }
+        }
+        cout << string(65, '=') << endl;
+    }
+    
+    void ver_quantidade(){
+        int linhas_ativas = 0;
+        for (int i = 0; i < total; i++){
+            if(!roupas[i].excluido){
+                linhas_ativas++;
+            }
+        }
 
         cout << string(65, '=') << endl;
         cout << setw(40) << "ITENS CADASTRADOS" << endl;
         cout << string(65, '-') << endl;
-        cout << setw(34) << "Total: " << conta_linha << endl;
+        cout << setw(34) << "Total: " << linhas_ativas << endl;
         cout << string(65, '=') << endl;
     }
     
     void ver_intervalo_data(){
-        DataFuncoes funcaoData;
-        ifstream lendo_estoque("Roupas_em_Estoque.txt");
-            if(!lendo_estoque){
-                cout << setw(35) << string(50, '=') << endl;
-                cout << setw(35) << "ARQUIVO NÃO ENCONTRADO!" << endl;
-                cout << setw(35) << string(50, '=') << endl;
-                return;
-            }
-
-            string linhas;
-            if (!getline(lendo_estoque, linhas)){
-                cout << string(65, '=') << endl;
-                cout << setw(50) << "ESTOQUE VAZIO! ADICIONE UMA ROUPA!" << endl;
-                cout << string(65, '=') << endl;
-                return;
-            }
-
-            int tam_vetor = 1;
-
-            while(getline(lendo_estoque, linhas)) {
-                tam_vetor++;
-            }
-        lendo_estoque.close();
-
-        string *roupas = new string[tam_vetor];
-
-        lendo_estoque.open("Roupas_em_Estoque.txt");
-
-            for(int i = 0; i < tam_vetor; i++){
-                getline(lendo_estoque, roupas[i]);
-            }
-
-        lendo_estoque.close();
-
+        if (total == 0){
+            cout << string(65, '=') << endl;
+            cout << setw(35) << "ESTOQUE VAZIO ADICIONE UMA ROUPA!!" << endl;
+            cout << string(65, '=') << endl;
+            return;
+        }
+        
+        DataFuncoes Fun_data;
         string inicio_data, fim_data;
         cout << string(65, '=') << endl;
-        inicio_data = funcaoData.ler_data_valida("Ver itens de (DD/MM/AAAA): ");
-        fim_data = funcaoData.ler_data_valida("Até: ");
+        inicio_data = Fun_data.ler_data_valida("Ver itens de (DD/MM/AAAA): ");
+        fim_data = Fun_data.ler_data_valida("Até: ");
         cout << string(65, '-') << endl;
 
         cout << "ITENS ADICIONADOS DE: " << inicio_data << " ATÉ " << fim_data << ":" << endl;
         
         int enco_periodo = 0;
-        for(int i = 0; i < tam_vetor; i++){
-            string l_atual = roupas[i];
-
-            string data_linha = funcaoData.data_na_linha(l_atual);
-
-            if (!data_linha.empty()){
-                if(funcaoData.intervalos(data_linha, inicio_data, fim_data)){
-                    cout << l_atual << endl;
-                    enco_periodo++;
-                }
-            }
+        for(int i = 0; i < total; i++){
+           if ((!roupas[i].excluido) and (Fun_data.intervalos(roupas[i].data, inicio_data, fim_data))){
+            cout << roupas[i].id << roupas[i].Tipo << " | " << roupas[i].Tamanho << " | " << roupas[i].descricao << " | "
+            << roupas[i].marca << " | " << "R$" << roupas[i].valor << " | " << roupas[i].data << endl;
+            enco_periodo++;
+           }
         } 
         
         cout << endl << "Adicionados no período: " << enco_periodo << endl;
         cout << string(65, '=');
-
-        delete[] roupas;
     }
 
-    void excluir_num_item() {
-        ifstream lendo_estoque("Roupas_em_Estoque.txt");
-            if(!lendo_estoque){
-                cout << setw(35) << string(50, '=') << endl;
-                cout << setw(35) << "ARQUIVO NÃO ENCONTRADO!" << endl;
-                cout << setw(35) << string(50, '=') << endl;
-                return;
-            }
+    void ver_por_preco(){
+        if (total == 0){
+            cout << string(65, '=') << endl;
+            cout << setw(35) << "ESTOQUE VAZIO ADICIONE UMA ROUPA!!" << endl;
+            cout << string(65, '=') << endl;
+            return;
+        }
 
-            string linhas;
-            if (!getline(lendo_estoque, linhas)){
-                cout << string(65, '=') << endl;
-                cout << setw(50) << "ESTOQUE VAZIO! ADICIONE UMA ROUPA!" << endl;
-                cout << string(65, '=') << endl;
-                return;
-            }
+        float valor_minimo, valor_maximo;
+        cout << string(65, '=') << endl;
+        cout << "Informe o preço minímo para procura: R$";
+        cin >> valor_minimo;
+        cout << string(65, '-') << endl;
+        
+        while((valor_minimo < 0) or (cin.fail())){
+            cin.clear();
+            cin.ignore(10000, '\n');
+            cout << "O valor informado não é válido!" << endl;
+            cout << "Informe um valor válido: R$";
+            cin >> valor_minimo;
+            cout << endl << string(65, '-') << endl;
+        }
 
-            lendo_estoque.close();
-            lendo_estoque.open("Roupas_em_Estoque.txt");
+        cout << "Informe o preço máximo para procura: R$";
+        cin >> valor_maximo;
+        cout << string(65, '=') << endl;
 
-            int tam_vetor = 0;
-            string cont_aux;
+        while((valor_maximo < 0) or (cin.fail())){
+            cin.clear();
+            cin.ignore(10000, '\n');
+            cout << "O valor informado não é válido!" << endl;
+            cout << "Informe um valor válido: R$";
+            cin >> valor_maximo;
+        }
 
-            while(getline(lendo_estoque, cont_aux)){
-                tam_vetor++;
-            }
-            lendo_estoque.close();
+        cin.ignore();
 
-            string *roupas = new string[tam_vetor];
-            bool *item_riscado = new bool[tam_vetor];
+        cout << string(65, '~') << endl;
+        cout << "Itens encontrados com o valor de " << valor_minimo << "à " << valor_maximo << endl;
 
-            lendo_estoque.open("Roupas_em_Estoque.txt");
+        int enco_periodo = 0;
+        for(int i = 0; i < total; i++){
+           if ((!roupas[i].excluido) and (roupas[i].valor >= valor_minimo) and ((roupas[i].valor <= valor_maximo))){
+            cout << roupas[i].id << roupas[i].Tipo << " | " << roupas[i].Tamanho << " | " << roupas[i].descricao << " | "
+            << roupas[i].marca << " | " << "R$" << roupas[i].valor << " | " << roupas[i].data << endl;
+            enco_periodo++;
+           }
+        }
 
-            for (int i = 0; i < tam_vetor; i++){
-                getline(lendo_estoque, roupas[i]);
-                item_riscado[i] = false;
-            }
+        cout << endl << "Encontrados na faixa de preço: " << enco_periodo << endl;
+        cout << string(65, '=') << endl;
 
-            int escolha = -1;
-            bool selecao = true;
-            while (selecao){
+    }
+    void excluir_item() {
+        if (total == 0){
+            cout << string(65, '=') << endl;
+            cout << setw(35) << "ESTOQUE VAZIO ADICIONE UMA ROUPA!!" << endl;
+            cout << string(65, '=') << endl;
+            return;
+        }
+
+        bool continuar = true;
+        int escolha;
+        while (continuar){
                 cout << "========== Digite o número do item para marcar/desmarcar exclusão ==========" << endl;
                 cout <<"==================== Digite 0 para finalizar a operação ====================" << endl << endl;
 
-                for (int i = 0; i < tam_vetor; i++){
-                    string status_do_item;
-                    
-                    if (item_riscado[i] == true){
-                        status_do_item = "[ X ] ";
+                for (int i = 0; i < total; i++){
+                    cout << i + 1 << ". ";
+                    if (roupas[i].excluido){
+                        cout << "[ X ] ";
                     }
 
                     else{
-                        status_do_item = "[     ] ";
+                        cout << "[    ] ";
                     }
 
-                    cout << i + 1 << ". " << status_do_item << roupas[i] << endl << endl;
+                    cout << roupas[i].id << roupas[i].Tipo << " | " << roupas[i].Tamanho << " | " << roupas[i].descricao << " | "
+                    << roupas[i].marca << " | "  << "R$" << roupas[i].valor << " | " << roupas[i].data << endl;
+
                 }
                 
                 cout << string(65, '=') << endl;
@@ -352,38 +400,37 @@ struct Sistema_Estoque{
                 cin >> escolha;
                 cout << string(65, '=') << endl;
 
-                while((escolha <= -1) or (cin.fail())) {
-                    cin.clear();  
-                    cin.ignore(10000, '\n');  
-                    cout << "Opção inválida, digite algo válido!!: ";
+                while((escolha < -1) or (cin.fail())) {
+                    cin.clear();
+                    cin.ignore(10000, '\n');
+                    cout << "Opção Inválida! Digite algo válido: ";
                     cin >> escolha;
                 }
 
                 if (escolha == 0){
-                    selecao = false;
+                    continuar = false;
                 }
-                else if ((escolha > 0) and (escolha <= tam_vetor)){
-                    if (item_riscado[escolha - 1] == true){
-                        item_riscado[escolha - 1] = false;
+
+                else if ((escolha > 0) and (escolha <= total)){
+                    if (roupas[escolha - 1].excluido){
+                        roupas[escolha - 1].excluido = false;
                         cout << "--- Item tirado da exclusão! ---" << endl;
                     }
                     else {
-                        item_riscado[escolha - 1] = true;
+                        roupas[escolha - 1].excluido = true;
                         cout << "--- Item adicionado para exclusão ---" << endl;
                     }
                 }
 
                 else{
-                    cout << string(50, '=') << endl;
-                    cout << "Opção Inválida! Digite algo válido!" << endl;
-                    cout << string(65, '=') << endl;
+                    cout << "Opção inválida! Digite algo válido!" << endl;
                 }  
             }
 
         int lixeira = 0;
         
-        for (int i = 0; i < tam_vetor; i++){
-            if (item_riscado[i] == true){
+        for (int i = 0; i < total; i++){
+            if (roupas[i].excluido){
             lixeira++;
             }
         }
@@ -395,124 +442,186 @@ struct Sistema_Estoque{
             cin.ignore(10000, '\n');
             
             if ((confirmar == 'S') or (confirmar == 's')){
-                ofstream arquivo_atualizado("Roupas_em_estoque.txt");
-                for (int i = 0; i < tam_vetor; i++){
-                    if (item_riscado[i] == false){
-                        arquivo_atualizado << roupas[i] << endl;
-                    }
-                }
-
-                arquivo_atualizado.close();
-                cout << "ALterações Salvas no Estoque!" << endl;
+                cout << "Itens adicionados à lixeira" << endl;
             }
 
             else{
                 cout << "Operação cancelada!" << endl;
+                for (int i = 0; i < total; i++){
+                    roupas[i].excluido = false;
+                }
             }
         }
-            
-        delete[] roupas;
-        delete[] item_riscado;
+    }            
+    
+    void ver_por_ID(){
+        if (total == 0){
+            cout << string(65, '=') << endl;
+            cout << setw(35) << "ESTOQUE VAZIO ADICIONE UMA ROUPA!!" << endl;
+            cout << string(65, '=') << endl;
+            return;
+        }
+
+        int ID_inicial, ID_final;
+        cout << "INFORME A BAIXO O ID DE ONDE VC DESEJA INICIAR A BUSCA";
+        cout << "ID de início: ";
+        cin >> ID_inicial;
+        cout << "E agora informe o ID final da busca: ";
+        cin >> ID_final;
+        cin.ignore();
+
+        if(ID_inicial < 1){
+            ID_inicial = 1;
+        }
+        
+        if(ID_final > total){
+            ID_final = total;
+        }
+
+        if (ID_inicial > total){
+            cout << "Intervalo Inválido!" << endl;
+            return;
+        }
+
+        cout << string(65, '=') << endl;
+        cout << setw(35) << "Itend do ID " << ID_inicial << "ao " << ID_final << endl;
+        cout << string(65, '-') << endl;
+        
+        for (int i = ID_inicial - 1; i < ID_final; i++){
+            cout << roupas[i].id;
+            if (roupas[i].excluido){
+                cout << "[EXCLUIDO]";
+            }
+
+            cout << roupas[i].Tipo << " | " << roupas[i].Tamanho << " | " << roupas[i].descricao << " | "
+                    << roupas[i].marca << " | "  << "R$" << roupas[i].valor << " | " << roupas[i].data << endl;
+        }
+
+        cout << string(65, '=') << endl; 
     }
+
+    void liberar_memoria(){
+        delete[] roupas;
+    }
+
 };
+
+string menu() {
+
+    return "Digite o número da operação desejada abaixo: \n"
+            "1. Adicionar roupa ao estoque\n"
+            "2. Ver itens do estoque\n" 
+            "3. Ver quantidade de roupas no estoque\n"
+            "4. Pesquisar por... \n"
+            "5. Excluir itens do estoque \n"
+            "6. Ver por faixa de ID\n"
+            "0. Sair\n"
+            "Digite aqui: ";
+}
  
 int main(){
-    int Sim_ou_Nao = 1;
+
     Sistema_Estoque sistema;
-    
-    while (Sim_ou_Nao == 1) {
-        int opcao;
-        string entrada;
+    sistema.inicializar_estoque();
+    sistema.carregar_itens_do_arquivo();
+
+    int opcao = -1;
+    string entrada;
+
+    while(opcao != 0){
         cout << menu();
         getline(cin, entrada);
-        if (entrada.empty()){
-            cout << string(65, '=') << endl;
-            cout << setw(50) << "Insira algo válido!" << endl;
-            cout << string(65, '=') << endl;
-            cout << endl;
-            continue;
-        }
 
         stringstream ss(entrada);
-        if(!(ss >> opcao)){
-            cout << string(65, '=') << endl;
-            cout << setw(45) << "Insira um NÚMERO!: " << endl;
-            cout << string(65, '=') << endl;
-            continue;
-        }
 
-        switch (opcao) {
-            case 1:{
-                Info_roupa roupa;
-                roupa.adiciona_roupa();
-                cout << endl << string(65, '=') << endl;
-                cout << setw(45) << "Roupa Adicionada com Sucesso!!!" << endl;
-                cout << string(65, '=') << endl;
-                break;
-            }
-        
-            case 2:
-                sistema.ver_estoque();
-                break;
-            
-            case 3:
-                sistema.ver_quantidade();
-                break;
-            
-            case 4: {
-                cin.ignore();
-                sistema.ver_intervalo_data();
-                break;
-            }
-
-            case 5:
-                sistema.excluir_num_item();
-                break;
-            
-            default:
-                cout << endl << "Opção Inválida!!!" << endl;
-            
+        if (entrada.empty()){
+            cout << string(65, '=') << endl;
+            cout << setw(35) << "INSIRA ALGO VÁLIDO!" << endl;
+            cout << string(65, '=') << endl << endl;
         }
         
-        cout << endl << setw(47) << "Deseja realizar outra operação?" << endl; 
-        cout << setw(50) << "Digite 1 para 'SIM' ou 2 para 'NÃO': ";
-        
-        string sim_ou_nao_entrada;
-        bool se_valido = false;
+        else if (!(ss >> opcao)){
+            cout << string(65, '=') << endl;
+            cout << setw(35) << "INSIRA UM NÚMERO!" << endl;
+            cout << string(65, '=') << endl << endl;
+        }
 
-        while(!se_valido){
-            getline(cin, sim_ou_nao_entrada);
+        else{
+            switch (opcao) {
+                case 1:
+                    sistema.adicionando_roupa_nova();
+                    break;
+                case 2:
+                    sistema.ver_estoque();
+                    break;
+                
+                case 3:
+                    sistema.ver_quantidade();
+                    break;
+                
+                case 4: {
+                    int opcao_secundaria;
+                    string entrada_da_secundaria;
 
-            if (sim_ou_nao_entrada.empty()){
-                cout << string(65, '=') << endl;
-                cout << setw(43) << "Valor inválido!" << endl;
-                cout << string(65, '=') << endl;
+                    cout << string(65, '=') << endl;
+                    cout << "4. Pesquisar por: " << endl;
+                    cout << "1. Período de Data." << endl;
+                    cout << "2. Faixa de Preço." << endl;
+                    cout << "Informe: ";
+                    getline(cin, entrada_da_secundaria);
 
-                continue;
+                    stringstream ss_pesquisa(entrada_da_secundaria);
+                    if(!(ss_pesquisa >> opcao_secundaria)){
+                        cout << string(65, '=') << endl;
+                        cout << setw(50) << "Insira um número!" << endl;
+                        cout << string(65, '=') << endl;
+                    }
+
+                    else{
+                        switch(opcao_secundaria){
+                            case 1:
+                                sistema.ver_intervalo_data();
+                                break;
+                            
+                            case 2:
+                                sistema.ver_por_preco();
+                                break;
+
+                            default:
+                                cout << "Opção Inválida!" << endl;
+                        }
+                    }
+                    break;
+                }
+
+                case 5:
+                    sistema.excluir_item();
+                    break;
+                
+                case 6:
+                    sistema.ver_por_ID();
+                    break;
+
+                case 0: {
+                    int salvar;
+                    cout << endl << setw(47) << "Deseja salvar sua atividade antes de sair?" << endl;
+                    cout << setw(50) << "Digite 1 para 'SIM' ou 2 para 'NÂO': ";
+                    cin >> salvar;
+                    cin.ignore();
+
+                    if (salvar == 1) {
+                        sistema.salvar_no_arquivo();
+                    }
+                    cout << endl << "================= FIM DO PROGRAMA. OBRIGADO(A) ==================" << endl;
+                    break;
+                }
+
+                default:
+                    cout << endl << "Opção Inválida!" << endl;
+                
             }
-
-           stringstream ss(sim_ou_nao_entrada);
-            if (!(ss >> Sim_ou_Nao)){
-                cout << string(65, '=') << endl;
-                cout << setw(43) << "Digite apenas 1 ou 2! " << endl;
-                cout << string(65, '=') << endl;
-                cout << "Digite: ";
-                continue;
-            }
-
-            if ((Sim_ou_Nao < 1) or (Sim_ou_Nao > 2)){
-                cout << string(65, '=') << endl;
-                cout << setw(43) << "Digite apenas 1 ou 2!" << endl;
-                cout << string(65, '=') << endl;
-                cout << "Digite: ";
-                continue;
-            }
-
-            se_valido = true;
         }
     }
-
-    cout << endl << "================= FIM DO PROGRAMA. OBRIGADO(A) ==================" << endl;
 
     return 0;
 }
